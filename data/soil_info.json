@@ -1,0 +1,90 @@
+{
+  "categories": {
+    "Peat & Peaty soils": {
+      "match": "veen|moer",
+      "description": "Peat and peaty soils. High organic matter, low fertility for arable crops. When drained, the peat subsides and releases CO₂.",
+      "current": "Pasture and grassland for dairy cattle. In some areas potatoes and onions on drained land.",
+      "alternative": "Legumes grow poorly due to low fertility and an unstable water regime. Prospect: paludiculture (crops on wet peat), which reduces emissions but produces little protein."
+    },
+    "Sea clay": {
+      "match": "klei|poldervaag|drechtvaag|woudeerd|leek",
+      "description": "Marine and river clays of the polders and coastal areas. Heavy, wet soils with high fertility.",
+      "current": "Cereals, sugar beet, potatoes, maize, dairy grassland.",
+      "alternative": "Peas, field beans and soy: clay holds water well, but drainage and sowing timing matter, since heavy soil warms slowly in spring and waterlogs easily."
+    },
+    "Sandy soils": {
+      "match": "zand|beekeerd|vlakvaag",
+      "description": "Sandy soils, poor in water and nutrients, but well drained and warm up quickly.",
+      "current": "Potatoes, maize, rye and cereals, grassland. In some areas bulb flowers.",
+      "alternative": "Peas and soy are possible with irrigation and organic matter. Field beans are less robust. Yields are likely lower than on clay or loess."
+    },
+    "Other": {
+      "match": "",
+      "description": "Soil type not assigned to a known group. Add a description to data/soil_info.json.",
+      "current": "No data on current production.",
+      "alternative": "No data on potential production."
+    }
+  },
+  "soils": {
+    "Kalkrijke poldervaaggronden; lichte klei": {
+      "description": "Light calcareous clays of the polders. Easier to work than heavy clays.",
+      "current": "Potatoes, sugar beet, cereals, vegetables, grassland.",
+      "alternative": "Field beans and peas grow well. The light structure suits early sowing of legumes.",
+      "source": "draft, to verify"
+    },
+    "Kalkrijke leek-/woudeerdgronden; klei": {
+      "description": "Calcareous clays with traces of an ancient forest soil (woudeerd).",
+      "current": "Cereals, potatoes, sugar beet, grassland.",
+      "alternative": "Peas and field beans: calcareous soil suits legumes. Check structure and drainage.",
+      "source": "draft, to verify"
+    },
+    "Kalkarme drechtvaaggronden; zware klei": {
+      "description": "Heavy clays with low lime content. Waterlog strongly in spring.",
+      "current": "Pasture and grassland for dairy cattle, cereals, in some areas potatoes.",
+      "alternative": "Sowing legumes is limited by late drying of the soil. Potential exists with good drainage. Field beans tolerate heavy soil better than peas.",
+      "source": "draft, to verify"
+    },
+    "Oopveengronden op veenmosveen": {
+      "description": "Sphagnum peat. Very low fertility, strong subsidence when drained.",
+      "current": "Grassland and pasture.",
+      "alternative": "Hardly suitable for legumes. Consider wet crops (paludiculture).",
+      "source": "draft, to verify"
+    },
+    "Weideveengronden op veenmosveen": {
+      "description": "Peat on which pastures have traditionally been established. Water level is managed by drainage.",
+      "current": "Pasture for dairy cattle, hay.",
+      "alternative": "Legumes are not recommended due to subsidence and low fertility. Paludiculture is possible if the water level is raised.",
+      "source": "draft, to verify"
+    },
+    "Moerige eerdgronden": {
+      "description": "Sandy soils with a topsoil of peaty (moerig) humus.",
+      "current": "Grassland, maize, cereals.",
+      "alternative": "Peas and soy are possible with fertilisation and irrigation. Field beans are less reliable.",
+      "source": "draft, to verify"
+    },
+    "Waardveengronden": {
+      "description": "River-valley peat (waard), often under a layer of clay or silt.",
+      "current": "Grassland and pasture, potatoes in some places.",
+      "alternative": "Legumes are limited by waterlogging. Selective replacement with peas is possible with good drainage.",
+      "source": "draft, to verify"
+    },
+    "Vlierveengronden": {
+      "description": "Peat formed in deltas and river floodplains, often with mineral admixtures.",
+      "current": "Pasture, grassland, cereals on drained plots.",
+      "alternative": "Field beans and peas are poorly suited due to low fertility. Paludiculture or extensive grassland is preferable.",
+      "source": "draft, to verify"
+    },
+    "Beekeerdgronden; fijn zand": {
+      "description": "River sandy soils (beek means stream), fine sand, fairly fertile.",
+      "current": "Potatoes, maize, cereals, grassland.",
+      "alternative": "Peas and soy are possible with irrigation. Fine sand warms quickly and suits early sowing of peas.",
+      "source": "draft, to verify"
+    },
+    "Kalkhoudende vlakvaaggronden; matig fijn zand": {
+      "description": "Calcareous sandy soils of the plains, medium-fine texture.",
+      "current": "Cereals, potatoes, bulb crops, maize.",
+      "alternative": "Peas, field beans and soy are suitable. Lime favours legumes; irrigation is needed in dry years.",
+      "source": "draft, to verify"
+    }
+  }
+}

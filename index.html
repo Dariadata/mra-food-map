@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -116,8 +115,8 @@ p {
   z-index: 810;
   bottom: 68px;
   left: 22px;
-  width: 250px;
-  max-height: 330px;
+  width: 270px;
+  max-height: 420px;
   overflow-y: auto;
   padding: 16px 18px;
   background: rgba(255,255,255,.97);
@@ -134,7 +133,26 @@ p {
 .legend-subtitle {
   color: #92978e;
   font-size: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.legend-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 12px 0 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #efeee8;
+  color: #829080;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.legend-group .legend-count {
+  font-size: 10px;
+  letter-spacing: 0;
 }
 
 .legend-item {
@@ -348,27 +366,6 @@ p {
   line-height: 1.6;
 }
 
-.notes textarea {
-  width: 100%;
-  min-height: 155px;
-  padding: 13px;
-  resize: vertical;
-  border: 1px solid #e3e1d9;
-  border-radius: 12px;
-  font: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  outline: none;
-}
-
-.notes textarea:focus { border-color: #8fa78f; }
-
-.note-status {
-  margin-top: 7px;
-  font-size: 11px;
-  color: #81897e;
-}
-
 #loading {
   position: absolute;
   z-index: 1500;
@@ -411,8 +408,8 @@ p {
   .soil-legend {
     left: 12px;
     bottom: 52px;
-    width: 205px;
-    max-height: 220px;
+    width: 220px;
+    max-height: 260px;
     padding: 12px;
   }
 
@@ -456,7 +453,7 @@ p {
   <div class="eyebrow">Spatial research · Amsterdam</div>
   <h1>Understanding the Amsterdam Metropolitan Region</h1>
   <p>
-    Here we can add a research question, context, or background information about the Amsterdam Metropolitan Region (MRA). 
+    Here we can add a research question, context, or background information about the Amsterdam Metropolitan Region (MRA).
   </p>
 </section>
 
@@ -471,7 +468,7 @@ p {
 
   <div class="soil-legend" id="soil-legend">
     <h3>Soil types</h3>
-    <div class="legend-subtitle">Hover or select a soil type · Sorted by frequency</div>
+    <div class="legend-subtitle">Hover or select a soil type · Grouped by soil group</div>
     <div id="legend-items">Loading soil types…</div>
   </div>
 
@@ -515,14 +512,18 @@ p {
     </div>
 
     <div class="info-card">
-      <div class="label">Municipality</div>
-      <div class="value" id="panel-municipality">—</div>
+      <div class="label">Currently produced</div>
+      <div class="value" id="panel-current">—</div>
     </div>
 
-    <div class="notes">
-      <div class="panel-label">Research notes</div>
-      <textarea id="panel-notes" placeholder="Write your observations about this area..."></textarea>
-      <div class="note-status" id="note-status">Notes are saved in this browser.</div>
+    <div class="info-card">
+      <div class="label">Potential alternative</div>
+      <div class="value" id="panel-alternative">—</div>
+    </div>
+
+    <div class="info-card">
+      <div class="label">Municipality</div>
+      <div class="value" id="panel-municipality">—</div>
     </div>
 
   </div>
@@ -549,6 +550,7 @@ p {
 <script>
 const GEOJSON_FILE = "data/MRA_BUURTEN_FINAL.geojson";
 const MUNICIPALITIES_FILE = "data/MRA_GEMEENTEN_PROJECT.geojson";
+const SOIL_INFO_FILE = "data/soil_info.json";
 
 const mapSection = document.getElementById("map-section");
 const panel = document.getElementById("info-panel");
@@ -586,26 +588,12 @@ let regionBounds = null;
 let selectedLayer = null;
 let activeSoil = null;
 let hoveredSoil = null;
-let saveTimer = null;
 
 const soilColorMap = new Map();
 const soilCounts = new Map();
 
-/* Add your descriptions here.
-   Use the exact bodemklasse values from your GeoJSON as keys. */
-const soilInfo = {
-  "ADD EXACT SOIL TYPE NAME": {
-    description: "Add a description of this soil type here.",
-    currentProduction: "Describe what is currently produced or grown here.",
-    alternativeProduction: "Describe possible alternative production here."
-  }
-};
-
-const defaultSoilInfo = {
-  description: "Add information about the characteristics of this soil type.",
-  currentProduction: "Information about current production will be added here.",
-  alternativeProduction: "Information about potential alternative production will be added here."
-};
+/* Soil descriptions, loaded from data/soil_info.json */
+let SOIL_DB = null;
 
 async function loadJSON(filename) {
   const response = await fetch(filename);
@@ -615,6 +603,51 @@ async function loadJSON(filename) {
   }
 
   return response.json();
+}
+
+/* Soil group from keywords in the soil name (order in soil_info.json matters) */
+function categoryOf(name) {
+  const cats = (SOIL_DB && SOIL_DB.categories) || {};
+
+  for (const [label, c] of Object.entries(cats)) {
+    if (c.match && new RegExp(c.match, "i").test(String(name || ""))) {
+      return label;
+    }
+  }
+
+  return "Other";
+}
+
+/* Text for a soil type: exact entry first, then group, then default */
+function getSoilInfo(name) {
+  if (!SOIL_DB) {
+    return { description: "—", current: "—", alternative: "—", source: "", fromDb: false, category: "" };
+  }
+
+  const n = String(name || "").trim().toLowerCase();
+
+  /* Longest matching key wins, so "Moerige eerdgronden" matches the full name */
+  let soil = null;
+  for (const [key, val] of Object.entries(SOIL_DB.soils || {})) {
+    const k = key.toLowerCase();
+    if (n.includes(k) && (!soil || k.length > soil.key.length)) {
+      soil = { key: k, ...val };
+    }
+  }
+
+  const category = categoryOf(name);
+  const cat = (SOIL_DB.categories || {})[category] || {};
+  const def = (SOIL_DB.categories || {})["Other"] || {};
+  const pick = field => (soil && soil[field]) || cat[field] || def[field] || "—";
+
+  return {
+    description: pick("description"),
+    current: pick("current"),
+    alternative: pick("alternative"),
+    source: soil ? (soil.source || "") : "",
+    fromDb: !!soil,
+    category
+  };
 }
 
 function property(properties, name) {
@@ -641,13 +674,6 @@ function soilName(feature) {
   }
 
   return String(value).trim();
-}
-
-function noteKey(feature) {
-  const p = feature.properties || {};
-  const code = property(p, "buurtcode");
-
-  return `mra-note-${code || areaName(p)}`;
 }
 
 /* Count neighbourhoods per soil type and assign colours */
@@ -681,80 +707,119 @@ function createSoilColours(data) {
   renderLegend(soilTypes, data.features.length);
 }
 
-/* Build the legend in descending order of frequency */
+/* One legend row for a soil type */
+function buildLegendItem(soil) {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.dataset.soil = soil;
+  item.tabIndex = 0;
+  item.setAttribute("role", "button");
+  item.setAttribute("aria-label", `Highlight ${soil}`);
+
+  const swatch = document.createElement("span");
+  swatch.className = "legend-swatch";
+  swatch.style.backgroundColor = soilColorMap.get(soil);
+
+  const label = document.createElement("span");
+  label.textContent = soil;
+
+  const count = document.createElement("span");
+  count.className = "legend-count";
+  count.textContent = soilCounts.get(soil);
+
+  item.append(swatch, label, count);
+
+  item.addEventListener("mouseenter", () => {
+    if (!activeSoil) {
+      hoveredSoil = soil;
+      showSoilType(soil);
+    }
+  });
+
+  item.addEventListener("mouseleave", () => {
+    if (!activeSoil) {
+      hoveredSoil = null;
+      clearSoilType();
+    }
+  });
+
+  item.addEventListener("focus", () => {
+    if (!activeSoil) {
+      hoveredSoil = soil;
+      showSoilType(soil);
+    }
+  });
+
+  item.addEventListener("blur", () => {
+    if (!activeSoil) {
+      hoveredSoil = null;
+      clearSoilType();
+    }
+  });
+
+  item.addEventListener("click", () => {
+    if (activeSoil === soil) {
+      activeSoil = null;
+      hoveredSoil = null;
+      clearSoilType();
+    } else {
+      activeSoil = soil;
+      hoveredSoil = null;
+      showSoilType(soil);
+    }
+  });
+
+  item.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      item.click();
+    }
+  });
+
+  return item;
+}
+
+/* Group header with the total number of neighbourhoods in the group */
+function buildGroupHeader(title, total) {
+  const header = document.createElement("div");
+  header.className = "legend-group";
+
+  const name = document.createElement("span");
+  name.textContent = title;
+
+  const count = document.createElement("span");
+  count.className = "legend-count";
+  count.textContent = total;
+
+  header.append(name, count);
+  return header;
+}
+
+/* Build the legend grouped by soil group, in the order of soil_info.json */
 function renderLegend(soilTypes, totalNeighbourhoods) {
   const container = document.getElementById("legend-items");
   container.replaceChildren();
 
+  const groups = new Map();
   soilTypes.forEach(soil => {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-    item.dataset.soil = soil;
-    item.tabIndex = 0;
-    item.setAttribute("role", "button");
-    item.setAttribute("aria-label", `Highlight ${soil}`);
+    const category = getSoilInfo(soil).category || "Other";
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category).push(soil);
+  });
 
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-    swatch.style.backgroundColor = soilColorMap.get(soil);
+  const configured = Object.keys((SOIL_DB && SOIL_DB.categories) || {});
+  const order = [...configured, ...groups.keys()];
+  const shown = new Set();
 
-    const label = document.createElement("span");
-    label.textContent = soil;
+  order.forEach(category => {
+    if (shown.has(category) || !groups.has(category)) return;
+    shown.add(category);
 
-    const count = document.createElement("span");
-    count.className = "legend-count";
-    count.textContent = soilCounts.get(soil);
+    const soils = groups.get(category);
+    const total = soils.reduce((sum, soil) => sum + soilCounts.get(soil), 0);
 
-    item.append(swatch, label, count);
-
-    item.addEventListener("mouseenter", () => {
-      if (!activeSoil) {
-        hoveredSoil = soil;
-        showSoilType(soil);
-      }
-    });
-
-    item.addEventListener("mouseleave", () => {
-      if (!activeSoil) {
-        hoveredSoil = null;
-        clearSoilType();
-      }
-    });
-
-    item.addEventListener("focus", () => {
-      if (!activeSoil) {
-        hoveredSoil = soil;
-        showSoilType(soil);
-      }
-    });
-
-    item.addEventListener("blur", () => {
-      if (!activeSoil) {
-        hoveredSoil = null;
-        clearSoilType();
-      }
-    });
-
-    item.addEventListener("click", () => {
-      if (activeSoil === soil) {
-        activeSoil = null;
-        hoveredSoil = null;
-        clearSoilType();
-      } else {
-        activeSoil = soil;
-        hoveredSoil = null;
-        showSoilType(soil);
-      }
-    });
-
-    item.addEventListener("keydown", event => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        item.click();
-      }
-    });
-
-    container.appendChild(item);
+    container.appendChild(buildGroupHeader(category, total));
+    soils.forEach(soil => container.appendChild(buildLegendItem(soil)));
   });
 
   const missingCount = totalNeighbourhoods -
@@ -828,13 +893,13 @@ function showSoilType(soil) {
 
 /* Show the soil information card */
 function displaySoilTooltip(soil) {
-  const info = soilInfo[soil] || defaultSoilInfo;
+  const info = getSoilInfo(soil);
 
   document.getElementById("tooltip-title").textContent = soil;
   document.getElementById("tooltip-color").style.backgroundColor = soilColorMap.get(soil);
   document.getElementById("tooltip-description").textContent = info.description;
-  document.getElementById("tooltip-current").textContent = info.currentProduction;
-  document.getElementById("tooltip-alternative").textContent = info.alternativeProduction;
+  document.getElementById("tooltip-current").textContent = info.current;
+  document.getElementById("tooltip-alternative").textContent = info.alternative;
 
   tooltip.classList.add("open");
 }
@@ -872,6 +937,8 @@ function showSoil(feature) {
   const p = feature.properties || {};
   const specific = property(p, "bodemklasse");
   const broad = property(p, "hoofdklasse");
+  const currentEl = document.getElementById("panel-current");
+  const altEl = document.getElementById("panel-alternative");
 
   if (!specific) {
     const message = document.createElement("div");
@@ -884,6 +951,8 @@ function showSoil(feature) {
       : "Soil data unavailable";
 
     container.appendChild(message);
+    currentEl.textContent = "—";
+    altEl.textContent = "—";
     return;
   }
 
@@ -906,6 +975,10 @@ function showSoil(feature) {
     secondary.textContent = `Soil group: ${broad}`;
     container.appendChild(secondary);
   }
+
+  const info = getSoilInfo(specific);
+  currentEl.textContent = info.current;
+  altEl.textContent = info.alternative;
 }
 
 /* Select a neighbourhood */
@@ -924,30 +997,6 @@ function selectNeighbourhood(feature, layer) {
     municipalityName(feature.properties);
 
   showSoil(feature);
-
-  const textarea = document.getElementById("panel-notes");
-  const key = noteKey(feature);
-
-  try {
-    textarea.value = localStorage.getItem(key) || "";
-  } catch (error) {
-    textarea.value = "";
-  }
-
-  textarea.oninput = () => {
-    clearTimeout(saveTimer);
-
-    saveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(key, textarea.value);
-        document.getElementById("note-status").textContent =
-          "Saved in this browser";
-      } catch (error) {
-        document.getElementById("note-status").textContent =
-          "Could not save notes in this browser";
-      }
-    }, 250);
-  };
 
   panel.classList.add("open");
   mapSection.classList.add("panel-open");
@@ -994,10 +1043,12 @@ async function init() {
       throw new Error("Leaflet could not load. Check your internet connection.");
     }
 
-    const [data, municipalityData] = await Promise.all([
+    const [data, municipalityData, soilDb] = await Promise.all([
       loadJSON(GEOJSON_FILE),
-      loadJSON(MUNICIPALITIES_FILE)
+      loadJSON(MUNICIPALITIES_FILE),
+      loadJSON(SOIL_INFO_FILE)
     ]);
+    SOIL_DB = soilDb;
 
     if (!data.features || data.features.length === 0) {
       throw new Error("The neighbourhood GeoJSON file contains no features.");
@@ -1008,6 +1059,9 @@ async function init() {
     }
 
     createSoilColours(data);
+
+    const noDescription = [...soilCounts.keys()].filter(s => !getSoilInfo(s).fromDb);
+    console.warn("No exact description in soil_info.json for:", noDescription);
 
     /* Municipality boundaries in a non-interactive top pane */
     const municipalityPane = map.createPane("municipalityPane");
